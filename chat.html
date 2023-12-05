@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<link rel='stylesheet prefetch'
+			href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css'>
+		<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.4.2.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.8.0/p5.js"></script>
+		<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
+		<script>
+			let pubnub;
+			let input;
+			let button;
+			let emojiPicker;
+			let emojiArea;
+			let name;
+
+			function setup() {
+				noCanvas();
+				select('.second-content').hide()
+				select('.profile').hide()
+
+				let names = ['A', 'B', 'C']
+
+				name = names[Math.floor(Math.random() * names.length)];
+				// random select a name from the list and set as your current user
+				select('#name').html(name)
+
+				// Initialize PubNub
+				pubnub = new PubNub({
+					publishKey: 'pub-c-20f42ded-d108-422a-a62b-11286d45d061',
+					subscribeKey: 'sub-c-9716137a-5028-46a8-96c4-76a04aee56c4',
+					userId: name
+				});
+
+				// Subscribe to the 'chat' channel
+				pubnub.subscribe({
+					channels: ['chat']
+				});
+
+				// pubnub.fetchMessages(
+				//     {
+				//         channels: ['chat'],
+				//         count: 100
+				//     },
+				//     (status, response) => {
+				//         // handle response
+				//         console.log(`status is`,status)
+				//         console.log(response.channels.chat)
+				//     })
+				setupBuilder()
+
+				// Listen for messages
+				pubnub.addListener({
+					message: function(event) {
+						let msg = event.message;
+						let fullMsg = `USER ${event.publisher}: ${msg}`
+						console.log(msg)
+						let li = createElement('li',
+							`<div class='p'>${event.publisher === name ? msg : fullMsg}</div>`);
+						li.addClass(event.publisher === name ? 'replies' : 'sent')
+						li.parent('chatField');
+					}
+				});
+
+				// Create input field and send button
+				input = select('#message');
+				button = select('#send');
+				button.mousePressed(sendMessage);
+
+				startButton = select('#start')
+				startButton.mousePressed(loading)
+
+				switchButton = select('#emo')
+
+				emoji = select('.emoji-container')
+
+				emoji.mousePressed((e) => {
+					e.stopPropagation();
+					builderArea = select('.builder')
+					pubnub.publish({
+				  message: emoji.elt.innerHTML,
+						channel: 'chat'
+					});
+					builderArea.hide()
+					// console.log(0)
+				})
+				switchButton.mousePressed(() => {
+					console.log(2)
+					emojiArea = select('#emoji-picker')
+					if (emojiArea.height > 0) {
+						emojiArea.hide()
+					} else {
+						emojiArea.show()
+					}
+				})
+
+				builderButton = select('#builder-switch')
+				builderButton.mousePressed(() => {
+					builderArea = select('.builder')
+					if (builderArea.height > 0) {
+						builderArea.hide()
+					} else {
+						builderArea.show()
+					}
+				})
+
+				// Initialize emoji picker
+				emojiPicker = document.querySelector('emoji-picker');
+				emojiPicker.addEventListener('emoji-click', function(event) {
+					input.value(input.value() + event.detail.unicode);
+				});
+			}
+
+			function sendMessage() {
+				let msg = input.value();
+				console.log(`msgs are`, msg)
+				pubnub.publish({
+					message: msg,
+					channel: 'chat'
+				});
+				input.value('');
+			}
+
+			function loading() {
+				select('.second-content').show()
+				select('.second-content').style('width', '100%')
+				select('.second-content').style('height', '100%')
+				select('.second-content').style('z-index', 2)
+				select('.second-content').style('display', 'flex')
+				select('.second-content').style(' justify-content', 'center')
+				select('.second-content').style(' align-items', 'center')
+
+				select('.init-content').hide()
+				setTimeout(() => {
+					select('.second-content').hide()
+					select('.profile').show()
+					select('.profile').style('display', 'flex')
+				}, 2000)
+			}
+
+			function setupBuilder() {
+				let emoji = select(".emoji");
+
+				let colors = ["#4bff81", "#4bb4ff", "#ff702e", "#b88cff", "#ffd21f"];
+				let eyes = select(".eyes");
+				let eyebrows = select(".eyebrows");
+				let mouth = select(".mouth");
+
+				let colorBtn = select("#colorSelection");
+				let eyesBtn = select("#eyes");
+				let eyebrowsBtn = select("#eyebrows");
+				let mouthBtn = select("#mouth");
+
+				//Setting up counters
+				let counter1 = 0;
+				let counter2 = 0;
+				let counter3 = 0;
+				let counter4 = 0;
+
+				//Setting up total counts for different images
+				let totalCounts = {
+					eyeCount: 5,
+					eyebrowsCount: 4,
+					mouthCount: 5,
+				};
+
+				//Adding event listener to each button
+				colorBtn.mousePressed(() => {
+					emoji.style('background-color', colors[counter1])
+					counter1 = counter1 < colors.length - 1 ? counter1 + 1 : 0;
+				});
+
+				eyesBtn.mousePressed(() => {
+					eyes.attribute("src", `eye-${counter2}.svg`);
+					counter2 = counter2 < totalCounts.eyeCount - 1 ? counter2 + 1 : 0;
+				});
+
+				eyebrowsBtn.mousePressed(() => {
+					eyebrows.attribute("src", `eyebrow-${counter3}.svg`);
+					counter3 = counter3 < totalCounts.eyebrowsCount - 1 ? counter3 + 1 : 0;
+				});
+
+				mouthBtn.mousePressed(() => {
+					mouth.attribute("src", `mouth-${counter4}.svg`);
+					counter4 = counter4 < totalCounts.mouthCount - 1 ? counter4 + 1 : 0;
+				});
+			}
+		</script>
+
+		<style>
+			body {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 100vh;
+				background: #D4BBDD;
+				font-family: "proxima-nova", "Source Sans Pro", sans-serif;
+				font-size: 1em;
+				letter-spacing: 0.1px;
+				color: #32465a;
+				text-rendering: optimizeLegibility;
+				text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.004);
+				-webkit-font-smoothing: antialiased;
+			}
+
+			#frame {
+				width: 95%;
+				min-width: 360px;
+				max-width: 1000px;
+				height: 80vh;
+				min-height: 300px;
+				max-height: 720px;
+				background: #E6EAEA;
+			}
+
+			@media screen and (max-width: 360px) {
+				#frame {
+					width: 100%;
+					height: 100vh;
+				}
+			}
+
+			#frame .content {
+				float: right;
+				width: 60%;
+				height: 100%;
+				overflow: hidden;
+				position: relative;
+			}
+
+			@media screen and (max-width: 735px) {
+				#frame .content {
+					width: calc(100% - 58px);
+					min-width: 300px !important;
+				}
+			}
+
+			@media screen and (min-width: 900px) {
+				#frame .content {
+					width: calc(100%);
+				}
+			}
+
+			#frame .content .messages {
+				height: auto;
+				min-height: calc(100% - 93px);
+				max-height: calc(100% - 93px);
+				overflow-y: scroll;
+				overflow-x: hidden;
+			}
+
+			@media screen and (max-width: 735px) {
+				#frame .content .messages {
+					max-height: calc(100% - 105px);
+				}
+			}
+
+			#frame .content .messages::-webkit-scrollbar {
+				width: 8px;
+				background: transparent;
+			}
+
+			#frame .content .messages::-webkit-scrollbar-thumb {
+				background-color: rgba(0, 0, 0, 0.3);
+			}
+
+			#frame .content .messages ul li {
+				display: inline-block;
+				clear: both;
+				float: left;
+				margin: 15px 15px 5px 15px;
+				width: calc(100% - 25px);
+				font-size: 0.9em;
+			}
+
+			#frame .content .messages ul li:nth-last-child(1) {
+				margin-bottom: 20px;
+			}
+
+			#frame .content .messages ul li.sent img {
+				margin: 6px 8px 0 0;
+			}
+
+			#frame .content .messages ul li.sent p {
+				background: #435f7a;
+				color: #f5f5f5;
+			}
+
+			#frame .content .messages ul li.replies img {
+				float: right;
+				margin: 6px 0 0 8px;
+			}
+
+			#frame .content .messages ul li.replies .p {
+				background: #f5f5f5;
+				float: right;
+				padding: 10px 15px;
+				border-radius: 20px;
+			 max-width: 205px;
+				line-height: 130%;
+			}
+
+			#frame .content .messages ul li.replies .eyes,#frame .content .messages ul li.replies .eyebrows,
+			#frame .content .messages ul li.replies .mouth  {
+				margin: 0;
+				width: auto;
+			}
+
+			#frame .content .messages ul li img {
+				width: 22px;
+				border-radius: 50%;
+				float: left;
+			}
+
+			#frame .content .messages ul li p {
+				display: inline-block;
+				padding: 10px 15px;
+				border-radius: 20px;
+				max-width: 205px;
+				line-height: 130%;
+			}
+
+			@media screen and (min-width: 735px) {
+				#frame .content .messages ul li p {
+					max-width: 300px;
+				}
+			}
+
+			#frame .content .message-input {
+				position: absolute;
+				bottom: 0;
+				width: 100%;
+				z-index: 99;
+			}
+
+			#frame .content .message-input .wrap {
+				position: relative;
+				display: flex;
+			}
+
+			#frame .content .message-input .wrap input {
+				font-family: "proxima-nova", "Source Sans Pro", sans-serif;
+				float: left;
+				border: none;
+				width: calc(100% - 50px);
+				padding: 11px 32px 10px 8px;
+				font-size: 0.8em;
+				color: #32465a;
+			}
+
+			@media screen and (max-width: 735px) {
+				#frame .content .message-input .wrap input {
+					padding: 15px 32px 16px 8px;
+				}
+			}
+
+			#frame .content .message-input .wrap input:focus {
+				outline: none;
+			}
+
+			#frame .content .message-input .wrap .attachment {
+				position: absolute;
+				right: 60px;
+				z-index: 4;
+				margin-top: 10px;
+				font-size: 1.1em;
+				color: #435f7a;
+				opacity: .5;
+				cursor: pointer;
+			}
+
+			@media screen and (max-width: 735px) {
+				#frame .content .message-input .wrap .attachment {
+					margin-top: 17px;
+					right: 65px;
+				}
+			}
+
+			#frame .content .message-input .wrap .attachment:hover {
+				opacity: 1;
+			}
+
+			#frame .content .message-input .wrap button {
+				float: right;
+				border: none;
+				width: 50px;
+				padding: 12px 0;
+				cursor: pointer;
+				background: #32465a;
+				color: #f5f5f5;
+			}
+
+			@media screen and (max-width: 735px) {
+				#frame .content .message-input .wrap button {
+					padding: 16px 0;
+				}
+			}
+
+			#frame .content .message-input .wrap button:hover {
+				background: #435f7a;
+			}
+
+			#frame .content .message-input .wrap button:focus {
+				outline: none;
+			}
+
+			#emoji-picker {
+				position: relative;
+				bottom: 347px;
+				left: 655px;
+			}
+
+			.profile {
+				height: 60px;
+				background: wheat;
+				display: flex;
+			}
+
+			.init-content {
+				width: 100%;
+				height: 100%;
+				background: rgb(210, 218, 210);
+				z-index: 3;
+				justify-content: center;
+				align-items: center;
+				display: flex;
+			}
+
+			.second-content {
+				width: 100%;
+				height: 100%;
+				z-index: 2;
+				justify-content: center;
+				align-items: center;
+				display: flex;
+			}
+
+			.loader {
+				border: 16px solid #f3f3f3;
+				/* Light grey */
+				border-top: 16px solid #3498db;
+				/* Blue */
+				border-radius: 50%;
+				width: 120px;
+				height: 120px;
+				animation: spin 2s linear infinite;
+			}
+
+			@keyframes spin {
+				0% {
+					transform: rotate(0deg);
+				}
+
+				100% {
+					transform: rotate(360deg);
+				}
+			}
+		</style>
+		<style>
+			.builder {
+				background-color: #ffffff;
+				height: 31.25em;
+				width: 25em;
+				position: absolute;
+				transform: translate(-50%, -50%);
+				left: 78%;
+				top: 58%;
+				border-radius: 0.8em;
+				box-shadow: 0 1.87em 4em rgba(86, 68, 9, 0.3);
+			}
+
+			.buttons-container {
+				height: 30%;
+				width: 100%;
+				position: absolute;
+				top: 0;
+				display: flex;
+				align-items: center;
+				justify-content: space-around;
+				/* padding: 0 1em; */
+			}
+
+			.buttons-container button {
+				font-size: 0.9em;
+				gap: 0.5em;
+				padding: 0.8em 1em;
+				border-radius: 2em;
+				border: none;
+				background-color: #f4c531;
+				font-family: "Poppins", sans-serif;
+				cursor: pointer;
+			}
+
+			.emoji-container {
+				height: 70%;
+				width: 100%;
+				position: absolute;
+				cursor: pointer;
+				top: 30%;
+			}
+
+			.emoji {
+				height: 14.37em;
+				width: 14.37em;
+				background-color: #ffd21f;
+				border-radius: 50%;
+				position: relative;
+			}
+
+			.emoji-container .emoji {
+				position: absolute;
+				transform: translate(-50%, -50%);
+				left: 50%;
+				top: 50%;
+			}
+
+			.eyes,
+			.eyebrows,
+			.mouth {
+				position: absolute;
+				transform: translateX(-50%);
+				left: 50%;
+			}
+
+			.eyes {
+				top: 5em;
+			}
+
+			.eyebrows {
+				top: 3.12em;
+			}
+
+			.mouth {
+				top: 7.5em;
+			}
+		</style>
+	</head>
+
+	<body>
+
+		<div id="frame">
+			<div class="init-content">
+				<div id="start" style="display: flex;">
+					<font>Start Chatting</font><i class="fa-regular fa-message" style="margin-left: 10px;"></i>
+				</div>
+			</div>
+			<div class="second-content">
+				<div class="loader"></div>
+			</div>
+			<div class="content">
+				<div class="profile">
+					<p style="margin-left: 40%;">Welcome to the Group Chat - <b id="name" style="color: red;"></b> </p>
+				</div>
+				<div class="messages" id="chatBox">
+					<ul id="chatField">
+					</ul>
+				</div>
+				<div class="message-input">
+					<div class="wrap">
+						<input id="message" type="text" placeholder="Write your message..." />
+						<button id="builder-switch"><i class="fa-solid fa-pencil"></i></button>
+						<button id="emo"><i class="fa-regular fa-face-smile fa-bounce"
+								style="color: #f09b4c;"></i></button>
+						<button id="send" class="submit">
+							<i class="fa fa-paper-plane" aria-hidden="true"></i></button>
+					</div>
+				</div>
+				<div id="emoji-picker" style="display: none;">
+					<emoji-picker></emoji-picker>
+				</div>
+				<div class="builder" style="display: none;">
+					<div class="buttons-container">
+						<button id="colorSelection">Color</button>
+						<button id="eyes">Eyes</button>
+						<button id="eyebrows">Eyebrows</button>
+						<button id="mouth">Mouth</button>
+					</div>
+					<div class="emoji-container">
+						<div class="emoji">
+							<img src="eye-4.svg" class="eyes" />
+							<img src="eyebrow-3.svg" class="eyebrows" />
+							<img src="mouth-4.svg" class="mouth" />
+						</div>
+					</div>
+				</div>
+
+
+
+			</div>
+		</div>
+
+
+
+		<!-- <div id="chat"></div>
+<input type="text" id="message" placeholder="Type your message here...">
+<emoji-picker></emoji-picker>
+<button id="send">Send</button> -->
+
+	</body>
+
+</html>
